@@ -1,39 +1,53 @@
 server:
   port: 8000
-
 spring:
-  application:
-    name: gateway
-    
-zuul:
-  ignoredServices: '*'
-  prefix: /api
-  routes:
-    multiplications:
-      path: /multiplications/**
-      serviceId: multiplication
-      strip-prefix: false
-    results:
-      path: /results/**
-      serviceId: multiplication
-      strip-prefix: false
-    leaders:
-      path: /leaders/**
-      serviceId: gamification
-      strip-prefix: false
-    stats:
-      path: /stats/**
-      serviceId: gamification
-      strip-prefix: false
-      
+    loadbalancer:
+      ribbon:
+        enabled: false
+    gateway:
+      enabled: true
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+      routes:
+      - id: multiplications
+        uri: lb://multiplication
+        predicates:
+        - Path=/api/multiplications/**
+        filters:
+        - name: CircuitBreaker
+          args:
+            name: multiplicationsCircuitBreaker
+            fallbackUri: forward:/multiplications-fallback
+        - StripPrefix=1
+      - id: results
+        uri: lb://multiplication
+        predicates:
+        - Path=/api/results/**
+        filters:
+        - StripPrefix=1
+      - id: leaders
+        uri: lb://gamification
+        predicates:
+        - Path=/api/leaders/**
+        filters:
+        - StripPrefix=1
+      - id: stats
+        uri: lb://gamification
+        predicates:
+        - Path=/api/stats/**
+        filters:
+        - StripPrefix=1
+
 management:
   endpoints:
     web:
       exposure:
-        include: httptrace, routes
+        include: httptrace, gateway
 eureka:
-  enabled: true
-  client:
-    service-url:
-      default-zone: http://localhost:8761/eureka
-    
+   client:
+      service-url:
+         default-zone: http://localhost:8761/eureka
